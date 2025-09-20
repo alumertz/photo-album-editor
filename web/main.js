@@ -8,7 +8,7 @@ import './style.css';
 import { loadAlbumData, saveAlbum } from './modules/album.js';
 import { loadGallery } from './modules/gallery.js';
 import { initializeEditor, mirrorWithEditor } from './modules/editor.js';
-import { toggleCutMarks, initializeSortable, handlePrint } from './modules/ui.js';
+import { toggleCutMarks, initializeSortable, handlePrint, handlePhotoPrint } from './modules/ui.js';
 import { setupPrintEventListeners } from './modules/print.js';
 
 // Global variables needed for compatibility
@@ -49,6 +49,7 @@ function loadInitialData() {
 function setupEventListeners() {
     $('.btn-refresh-gallery').on('click', loadGallery);
     $('.btn-print').on('click', handlePrint);
+    $('.btn-print-photo').on('click', handlePhotoPrint);
     $('.btn-save-album').on('click', saveAlbum);
     $('.btn-toggle-marks').on('click', toggleCutMarks);
     setupPrintEventListeners();
