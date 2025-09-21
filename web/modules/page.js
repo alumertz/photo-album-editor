@@ -3,6 +3,7 @@
  */
 
 import { processImage, rotateToTarget, rotateExistingImage } from './imageProcessor.js';
+import { updateGalleryCheckmarks } from './gallery.js';
 
 /**
  * Creates a new album page with processed image
@@ -102,6 +103,7 @@ function attachPageEventListeners($page) {
     $page.find('.btn-delete').on('click', function () {
         $page.remove();
         refreshOrder();
+        updateGalleryCheckmarks();
     });
 
     $page.find('.btn-rotate').on('click', async function () {

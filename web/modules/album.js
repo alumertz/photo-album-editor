@@ -3,6 +3,7 @@
  */
 
 import { createPage } from './page.js';
+import { updateGalleryCheckmarks } from './gallery.js';
 
 /**
  * Loads album data from server and creates optimized pages
@@ -36,6 +37,9 @@ async function loadAlbumData() {
             // Small pause between batches to avoid blocking UI
             await new Promise(resolve => setTimeout(resolve, 10));
         }
+        
+        // Update gallery checkmarks after loading album
+        updateGalleryCheckmarks();
     } catch (error) {
         console.error('Error loading album data:', error);
     }

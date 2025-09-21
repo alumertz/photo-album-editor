@@ -26,14 +26,21 @@ function loadGallery() {
 
         data.forEach(function (image) {
             const imgUrl = `/photos/${image}`;
+            const $container = $('<div>', { class: 'gallery-item', 'data-filename': image });
             const $img = $('<img>', { src: imgUrl, alt: image, class: 'gallery-image' });
+            const $checkmark = $('<div>', { class: 'checkmark', html: '✓' });
             
             $img.on('click', async function () {
                 await addImageToAlbum(image);
+                updateGalleryCheckmarks();
             });
             
-            $gallery.append($img);
+            $container.append($img, $checkmark);
+            $gallery.append($container);
         });
+        
+        // Update checkmarks after loading gallery
+        updateGalleryCheckmarks();
     }).fail(function() {
         console.error('Error loading gallery');
     });
@@ -109,6 +116,9 @@ async function addAllImagesToAlbum(imageList) {
             $addAllBtn.text(originalText).removeClass('btn-success').addClass('btn-outline-light').prop('disabled', false);
         }, 2000);
         
+        // Update checkmarks after adding all images
+        updateGalleryCheckmarks();
+        
     } catch (error) {
         console.error('Error adding all images to album:', error);
         $addAllBtn.text('Error!').removeClass('btn-primary').addClass('btn-danger');
@@ -116,6 +126,30 @@ async function addAllImagesToAlbum(imageList) {
             $addAllBtn.text(originalText).removeClass('btn-danger').addClass('btn-primary').prop('disabled', false);
         }, 2000);
     }
+}
+
+/**
+ * Updates gallery checkmarks based on which images are currently in the album
+ */
+function updateGalleryCheckmarks() {
+    // Get all filenames currently in the album
+    const albumFilenames = new Set();
+    $('.page').each(function() {
+        const filename = $(this).find('.page-image').attr('data-filename');
+        if (filename) {
+            albumFilenames.add(filename);
+        }
+    });
+    
+    // Update gallery items
+    $('.gallery-item').each(function() {
+        const filename = $(this).attr('data-filename');
+        if (albumFilenames.has(filename)) {
+            $(this).addClass('selected');
+        } else {
+            $(this).removeClass('selected');
+        }
+    });
 }
 
 /**
@@ -135,5 +169,6 @@ export {
     loadGallery,
     addImageToAlbum,
     addAllImagesToAlbum,
+    updateGalleryCheckmarks,
     generateId
 };
