@@ -57,6 +57,60 @@ body {
     background-color: white;
 }
 
+.ql-custom-color-control {
+    padding: 8px;
+    border-top: 1px solid #ddd;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ql-custom-color-control label {
+    font-size: 12px;
+    color: #444;
+    margin: 0;
+    font-weight: 500;
+}
+
+.ql-custom-color-control .custom-color-input {
+    width: 60px;
+    height: 30px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.ql-opacity-control {
+    padding: 8px;
+    border-top: 1px solid #ddd;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ql-opacity-control label {
+    font-size: 12px;
+    color: #444;
+    margin: 0;
+    font-weight: 500;
+}
+
+.ql-opacity-control input[type="number"] {
+    width: 50px;
+    height: 24px;
+    padding: 2px 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.ql-opacity-control span {
+    font-size: 12px;
+    color: #444;
+}
+
 .album {
     display: flex;
     flex-wrap: wrap;
