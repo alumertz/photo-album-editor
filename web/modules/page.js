@@ -48,12 +48,10 @@ function createPageElement(photo, imageDataUrl, cutmarks, punchmarks, originalOr
             <div class="page">
                 ${cutmarks}
                 <div class="punchmarks">${punchmarks}</div>
+                <button class="btn-add-textbox" title="Add Text Box">
+                    <i class="fa fa-font"></i>
+                </button>
                 <div class="description">
-                    <div class="content ${photo.caption ? 'written' : ''}">
-                        <div class="text">
-                            <p>${photo.caption || ''}</p>
-                        </div>
-                    </div>
                 </div>
             </div>
             <div class="page-bar">

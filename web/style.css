@@ -47,14 +47,65 @@ body {
     padding: 1em;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    height: 100vh;
+    overflow-y: auto;
 }
+
+.sidebar-bottom {
+    margin-top: auto;
+}
+
 .sidebar .item {
     margin-bottom: 1em;
     width: 100%;
 }
 .sidebar .caption-editor-wrapper {
     background-color: white;
+}
+
+.textbox-controls {
+    padding: 10px;
+    background-color: #3a3a3a;
+    border-radius: 4px;
+}
+
+.textbox-controls label {
+    font-size: 12px;
+    color: #fff;
+    margin-bottom: 8px;
+    display: block;
+    font-weight: 500;
+}
+
+.textbox-controls input[type="color"] {
+    width: 50px;
+    height: 30px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.textbox-controls input[type="number"] {
+    width: 55px;
+    height: 30px;
+    padding: 2px 4px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.textbox-controls span {
+    font-size: 12px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.textbox-controls .btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    white-space: nowrap;
 }
 
 .ql-custom-color-control {
@@ -185,6 +236,62 @@ body {
     background-color: #151515;
 }
 
+.btn-add-textbox {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: all 0.2s ease;
+}
+
+.btn-add-textbox:hover {
+    background: rgba(0, 0, 0, 0.9);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: scale(1.1);
+}
+
+.btn-add-textbox i {
+    font-size: 14px;
+}
+
+.btn-add-textbox {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 32px;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: all 0.2s ease;
+}
+
+.btn-add-textbox:hover {
+    background: rgba(0, 0, 0, 0.7);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: scale(1.1);
+}
+
+.btn-add-textbox i {
+    font-size: 14px;
+}
+
 .page .page-image {
     /* aspect-ratio: 3 / 2; */
     object-fit: cover;
@@ -247,50 +354,103 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 75px;
+    width: 100%;
+    pointer-events: none;
 }
 
-.content {
-    padding: 1em;
-    height: 100%;
-    width: 100%;
-    cursor: pointer;
-    transition: opacity 0.2s ease;
-    position: relative;
-    color: white;
-    display: flex;
-    justify-content: flex-end;
+.textbox {
+    position: absolute;
+    pointer-events: all;
+    z-index: 10;
+    cursor: move;
+    padding: 10px;
+    margin: -10px;
 }
-.content .text {
+
+.textbox .text-container {
+    position: relative;
+    display: inline-block;
+}
+
+.textbox-delete {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: #ff4444;
+    border: 1px solid white;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+    z-index: 1;
+    pointer-events: all;
+}
+
+.textbox-rotate {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 20px;
+    height: 20px;
+    background: #4444ff;
+    border: 1px solid white;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+    z-index: 1;
+    pointer-events: all;
+}
+
+.textbox:hover .textbox-delete,
+.textbox:hover .textbox-rotate {
+    display: flex;
+}
+
+.textbox .text {
     transform: rotate(180deg);
     writing-mode: vertical-rl;
     line-height: 1.2;
-    height: 100%;
-    padding: 0.7em 0.3em 0.3em 0.5em;
+    padding: 0.7em 0.5em 0.5em 0.5em;
     border-radius: 8px;
+    color: white;
+    min-width: 2em;
+    min-height: 3em;
+    background: rgba(0, 0, 0, 0.67);
+    display: block;
+    cursor: text;
+    white-space: pre-wrap;
+    transition: all 0.3s ease;
 }
-.content.written .text {
-    background: #000A;
+
+.textbox .text.horizontal {
+    transform: none;
+    writing-mode: horizontal-tb;
+    min-width: 5em;
+    min-height: 2em;
 }
-.content .text p {
+
+.textbox .text:hover {
+    outline: 2px dashed rgba(255, 255, 255, 0.5);
+}
+
+.textbox .text p {
     margin: 0;
 }
-.content:hover {
-    opacity: 0.6;
-}
-.content::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: black;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-.content:hover::before {
-    opacity: 0.6;
+
+.textbox .text:empty:before {
+    content: 'Text';
+    opacity: 0.5;
 }
 
 

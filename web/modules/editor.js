@@ -231,7 +231,13 @@ function extractOpacity(color) {
  */
 function mirrorWithEditor(event, quill) {
     const $target = $(event.currentTarget);
-    const content = $target.find('.text').html() || '';
+    
+    // Check if target is the text element itself or contains it
+    const $textElement = $target.hasClass('text') ? $target : $target.find('.text');
+    
+    if ($textElement.length === 0) return;
+    
+    const content = $textElement.html() || '';
     quill.root.innerHTML = content.trim();
 
     quill.off('text-change');
@@ -239,13 +245,13 @@ function mirrorWithEditor(event, quill) {
         const htmlContent = quill.root.innerHTML;
         const textContent = quill.getText().trim();
         
-        $target.find('.text').html(htmlContent);
+        $textElement.html(htmlContent);
         
         // Add or remove "written" class based on content
         if (textContent.length > 0) {
-            $target.addClass('written');
+            $textElement.addClass('written');
         } else {
-            $target.removeClass('written');
+            $textElement.removeClass('written');
         }
     });
 
