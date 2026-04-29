@@ -98,6 +98,11 @@ function createPageElement(photo, imageDataUrl, cutmarks, punchmarks, originalOr
  * @param {jQuery} $page - jQuery page element
  */
 function attachPageEventListeners($page) {
+    $page.on('click', function() {
+        $('.page-wrapper.page-active').removeClass('page-active');
+        $page.addClass('page-active');
+    });
+
     $page.find('.btn-delete').on('click', function () {
         $page.remove();
         refreshOrder();

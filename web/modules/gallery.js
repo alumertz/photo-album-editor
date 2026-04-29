@@ -2,7 +2,7 @@
  * Gallery Module - Manages available image gallery
  */
 
-import { createPage } from './page.js';
+import { createPage, refreshOrder } from './page.js';
 
 /**
  * Loads and displays available image gallery
@@ -31,7 +31,13 @@ function loadGallery() {
             const $checkmark = $('<div>', { class: 'checkmark', html: '✓' });
             
             $img.on('click', async function () {
-                await addImageToAlbum(image);
+                const $existing = $('.page-image[data-filename="' + image + '"]').closest('.page-wrapper');
+                if ($existing.length > 0) {
+                    $existing.remove();
+                    refreshOrder();
+                } else {
+                    await addImageToAlbum(image);
+                }
                 updateGalleryCheckmarks();
             });
             
@@ -59,9 +65,15 @@ async function addImageToAlbum(imageName) {
             id: generateId(),
             rotation: 0
         });
-        
+
         if ($page) {
-            $('.album').append($page);
+            const $active = $('.page-wrapper.page-active');
+            if ($active.length > 0) {
+                $active.after($page);
+            } else {
+                $('.album').append($page);
+            }
+            refreshOrder();
         }
     } catch (error) {
         console.error('Error adding image to album:', error);
