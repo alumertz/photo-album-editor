@@ -63,6 +63,14 @@ body {
     background-color: white;
 }
 
+#caption-editor .ql-editor {
+    font-size: 13px;
+}
+
+#caption-editor .ql-editor * {
+    font-size: inherit !important;
+}
+
 .btn-add-datebox {
     position: absolute;
     top: 10px;
@@ -158,10 +166,41 @@ body {
 }
 
 .datebox-controls {
-    padding: 10px;
+    padding: 0;
     background-color: #2a2a2a;
     border-radius: 6px;
     border: 1px solid #444;
+    overflow: hidden;
+}
+
+.datebox-controls .controls-title {
+    background-color: #111;
+    color: #e0e0e0;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #444;
+}
+
+.datebox-controls .controls-body {
+    padding: 10px;
+}
+
+.datebox-controls label {
+    font-size: 11px;
+    color: #aaa;
+    margin-bottom: 6px;
+    display: block;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.datebox-controls .btn {
+    font-size: 11px;
+    padding: 4px 8px;
 }
 
 .textbox-controls {
