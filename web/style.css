@@ -115,7 +115,8 @@ body {
     border-radius: 6px;
     color: white;
     background: rgba(0, 0, 0, 0.55);
-    display: block;
+    display: flex;
+    align-items: center;
     cursor: text;
     white-space: nowrap;
     transition: all 0.3s ease;
@@ -129,6 +130,7 @@ body {
 
 .datebox .text p {
     margin: 0;
+    display: contents;
 }
 
 .datebox .text.preset-classic {
@@ -203,6 +205,32 @@ body {
     font-size: 11px;
     padding: 4px 8px;
     white-space: nowrap;
+}
+
+.ql-font-size-control {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 2px;
+}
+
+.ql-font-size-control #ql-font-size-input {
+    width: 46px;
+    height: 24px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 13px;
+    text-align: center;
+}
+
+.ql-font-size-control #ql-font-size-input:focus {
+    outline: none;
+    border-color: #06c;
+}
+
+.ql-font-size-label {
+    font-size: 12px;
+    color: #444;
 }
 
 .ql-custom-color-control {

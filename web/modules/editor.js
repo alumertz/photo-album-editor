@@ -7,11 +7,14 @@
  * @returns {Quill} Quill editor instance
  */
 function initializeEditor() {
+    const SizeStyle = Quill.import('attributors/style/size');
+    SizeStyle.whitelist = null;
+    Quill.register(SizeStyle, true);
+
     const quill = new Quill('#caption-editor', {
         theme: 'snow',
         modules: {
             toolbar: [
-                [{ 'size': ['small', false, 'large', 'huge'] }],
                 [{ 'color': [] }, { 'background': [] }],
                 [{ 'align': [] }],
                 ['bold', 'italic', 'underline'],
@@ -20,10 +23,61 @@ function initializeEditor() {
         }
     });
 
-    // Add opacity input to toolbar
+    addFontSizeInput(quill);
     addOpacityInput(quill);
-    
+
     return quill;
+}
+
+/**
+ * Adds a numeric pt font-size input to the toolbar
+ * @param {Quill} quill - Quill editor instance
+ */
+function addFontSizeInput(quill) {
+    const toolbar = quill.getModule('toolbar').container;
+
+    const wrapper = document.createElement('span');
+    wrapper.className = 'ql-formats ql-font-size-control';
+    wrapper.innerHTML = `<input type="number" id="ql-font-size-input" min="1" max="999" placeholder="pt" title="Font size (pt)"><span class="ql-font-size-label">pt</span>`;
+
+    toolbar.insertBefore(wrapper, toolbar.firstChild);
+
+    const input = wrapper.querySelector('#ql-font-size-input');
+    let lastSelection = null;
+
+    quill.on('selection-change', function(range) {
+        if (!range) return;
+        lastSelection = range;
+        const format = quill.getFormat(range);
+        if (format.size) {
+            const pt = parseFloat(format.size);
+            input.value = isNaN(pt) ? '' : pt;
+        } else {
+            const pxSize = parseFloat(getComputedStyle(quill.root).fontSize);
+            input.value = isNaN(pxSize) ? '' : Math.round(pxSize * 0.75);
+        }
+    });
+
+    function applySize() {
+        const pt = parseInt(input.value);
+        if (!pt || pt < 1) return;
+        if (lastSelection && lastSelection.length > 0) {
+            quill.formatText(lastSelection.index, lastSelection.length, 'size', pt + 'pt');
+            setTimeout(() => quill.setSelection(lastSelection.index, lastSelection.length), 0);
+        } else {
+            const len = quill.getLength() - 1;
+            if (len > 0) quill.formatText(0, len, 'size', pt + 'pt');
+        }
+    }
+
+    input.addEventListener('mousedown', e => e.stopPropagation());
+    input.addEventListener('keydown', e => e.stopPropagation());
+    input.addEventListener('focus', function() { this.select(); });
+    input.addEventListener('input', applySize);
+    input.addEventListener('blur', applySize);
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); applySize(); }
+    });
 }
 
 /**
