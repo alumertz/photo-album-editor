@@ -308,6 +308,7 @@ function setupTextBoxControls() {
         e.stopPropagation();
         window.currentTextBox = $(this);
         updateTextBoxControls($(this));
+        $('#textbox-size').val($(this).attr('data-size') || '');
     });
     
     // Color change
@@ -339,6 +340,14 @@ function setupTextBoxControls() {
             $('#textbox-bg-color').val('#000000');
             $('#textbox-bg-opacity').val(67);
         }
+    });
+
+    // Size change
+    $('#textbox-size').on('change', function() {
+        if (!window.currentTextBox) return;
+        const padding = $(this).val();
+        window.currentTextBox.css('padding', padding || '');
+        window.currentTextBox.attr('data-size', padding);
     });
 }
 

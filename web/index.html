@@ -49,15 +49,28 @@
 
                 <div class="item">
                     <div class="textbox-controls">
-                        <label>Text Box Background:</label>
-                        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-                            <input type="color" id="textbox-bg-color" value="#000000">
-                            <input type="number" id="textbox-bg-opacity" min="0" max="100" value="67" step="5">
-                            <span>%</span>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-light flex-fill" id="textbox-bg-remove">Remove</button>
-                            <button class="btn btn-sm btn-outline-light flex-fill" id="textbox-bg-default">Default</button>
+                        <div class="controls-title">Text Box</div>
+                        <div class="controls-body">
+                            <label>Background</label>
+                            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                                <input type="color" id="textbox-bg-color" value="#000000">
+                                <input type="number" id="textbox-bg-opacity" min="0" max="100" value="67" step="5">
+                                <span>%</span>
+                            </div>
+                            <div class="d-flex gap-2 mb-3">
+                                <button class="btn btn-sm btn-outline-light flex-fill" id="textbox-bg-remove">Remove</button>
+                                <button class="btn btn-sm btn-outline-light flex-fill" id="textbox-bg-default">Default</button>
+                            </div>
+                            <label>Size</label>
+                            <select id="textbox-size" class="form-select form-select-sm">
+                                <option value="">Auto</option>
+                                <option value="2px 4px">XS</option>
+                                <option value="3px 6px">S</option>
+                                <option value="4px 8px">M</option>
+                                <option value="5px 10px">L</option>
+                                <option value="7px 13px">G</option>
+                                <option value="10px 18px">XG</option>
+                            </select>
                         </div>
                     </div>
                 </div>
