@@ -55,6 +55,8 @@ function setupEventListeners() {
     setupPrintEventListeners();
     setupTextBoxControls();
     setupAddTextBoxButtons();
+    setupAddDateBoxButtons();
+    setupDateBoxSidebarControls();
 }
 
 /**
@@ -153,6 +155,145 @@ function setupAddTextBoxButtons() {
         setTimeout(() => {
             $text.trigger('click');
         }, 100);
+    });
+}
+
+/**
+ * Sets up add date box button functionality
+ */
+function setupAddDateBoxButtons() {
+    $(document).on('click', '.btn-add-datebox', async function(e) {
+        e.stopPropagation();
+        const $page = $(this).closest('.page');
+        const $description = $page.find('.description');
+        const filename = $page.find('.page-image').attr('data-filename') || '';
+
+        let dateValue = '00/00/0000';
+        try {
+            const result = await $.getJSON(`/api/photo-exif-date/${encodeURIComponent(filename)}`);
+            if (result.date) dateValue = result.date;
+        } catch (e) { /* fallback to zeros */ }
+
+        const dateBoxId = 'datebox-' + Date.now();
+        const $dateBoxWrapper = $('<div>', {
+            class: 'datebox',
+            'data-id': dateBoxId,
+            'data-divider': '/'
+        });
+
+        $dateBoxWrapper.css({ right: '20px', bottom: '60px' });
+
+        const $textContainer = $('<div>', { class: 'text-container' });
+        const $deleteBtn = $('<button>', {
+            class: 'textbox-delete',
+            html: '×',
+            title: 'Delete date box'
+        });
+        const $rotateBtn = $('<button>', {
+            class: 'textbox-rotate',
+            html: '↻',
+            title: 'Rotate date box'
+        });
+        const $text = $('<div>', {
+            class: 'text preset-overlay',
+            html: `<p>${dateValue}</p>`
+        });
+
+        $textContainer.append($deleteBtn).append($rotateBtn).append($text);
+        $dateBoxWrapper.append($textContainer);
+        $description.append($dateBoxWrapper);
+
+        $dateBoxWrapper.draggable({
+            containment: 'parent',
+            scroll: false,
+            cancel: '.textbox-delete'
+        });
+
+        $text.on('mousedown', function(e) { e.stopPropagation(); });
+
+        $text.on('click', function(e) {
+            e.stopPropagation();
+            const event = { currentTarget: this };
+            mirrorWithEditor(event, quill);
+            window.currentTextBox = $(this);
+            window.currentDateBox = $dateBoxWrapper;
+            updateDateBoxSidebarControls($dateBoxWrapper);
+            updateTextBoxControls($(this));
+        });
+
+        $deleteBtn.on('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            $dateBoxWrapper.remove();
+        });
+
+        $rotateBtn.on('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            const isVertical = $text.css('writing-mode') === 'vertical-rl';
+            if (isVertical) {
+                $text.css({ 'writing-mode': 'horizontal-tb', 'transform': 'none' });
+            } else {
+                $text.css({ 'writing-mode': 'vertical-rl', 'transform': 'rotate(180deg)' });
+            }
+        });
+
+        setTimeout(() => { $text.trigger('click'); }, 100);
+    });
+}
+
+/**
+ * Updates the datebox sidebar controls to reflect the active date box state
+ */
+function updateDateBoxSidebarControls($dateBox) {
+    const currentDivider = $dateBox.attr('data-divider') || '/';
+    $('.datebox-divider').removeClass('active');
+    $(`.datebox-divider[data-divider="${CSS.escape(currentDivider)}"]`).addClass('active');
+
+    const $text = $dateBox.find('.text');
+    const presetClasses = ['preset-overlay', 'preset-classic', 'preset-stamp', 'preset-film'];
+    const activePreset = presetClasses.find(p => $text.hasClass(p));
+    $('.datebox-preset').removeClass('active btn-secondary').addClass('btn-outline-light');
+    if (activePreset) {
+        const name = activePreset.replace('preset-', '');
+        $(`.datebox-preset[data-preset="${name}"]`).removeClass('btn-outline-light').addClass('btn-secondary active');
+    }
+}
+
+/**
+ * Sets up datebox sidebar preset and divider controls
+ */
+function setupDateBoxSidebarControls() {
+    $(document).on('click', '.datebox-preset', function() {
+        if (!window.currentDateBox) return;
+        const preset = $(this).data('preset');
+        const $text = window.currentDateBox.find('.text');
+        $text.removeClass('preset-overlay preset-classic preset-stamp preset-film');
+        $text.addClass('preset-' + preset);
+        updateDateBoxSidebarControls(window.currentDateBox);
+    });
+
+    $(document).on('click', '.datebox-divider', function() {
+        if (!window.currentDateBox) return;
+        const newDivider = $(this).attr('data-divider');
+        const currentDivider = window.currentDateBox.attr('data-divider') || '/';
+        const $text = window.currentDateBox.find('.text');
+        replaceDividerInTextNodes($text[0], currentDivider, newDivider);
+        window.currentDateBox.attr('data-divider', newDivider);
+        updateDateBoxSidebarControls(window.currentDateBox);
+    });
+}
+
+/**
+ * Replaces divider characters in text nodes only (preserving HTML tags)
+ */
+function replaceDividerInTextNodes(element, oldStr, newStr) {
+    element.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            node.textContent = node.textContent.split(oldStr).join(newStr);
+        } else {
+            replaceDividerInTextNodes(node, oldStr, newStr);
+        }
     });
 }
 

@@ -51,6 +51,9 @@ function createPageElement(photo, imageDataUrl, cutmarks, punchmarks, originalOr
                 <button class="btn-add-textbox" title="Add Text Box">
                     <i class="fa fa-font"></i>
                 </button>
+                <button class="btn-add-datebox" title="Add Date">
+                    <i class="fa fa-calendar"></i>
+                </button>
                 <div class="description">
                 </div>
             </div>

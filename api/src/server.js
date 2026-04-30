@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const exifParser = require('exif-parser');
 
 const app = express();
 
@@ -39,6 +40,30 @@ app.get('/api/album', (req, res) => {
         res.json(JSON.parse(data));
     });
 });
+
+app.get('/api/photo-exif-date/:filename', (req, res) => {
+    const safeName = path.basename(req.params.filename);
+    const photoPath = path.join(__dirname, '../photos', safeName);
+
+    fs.readFile(photoPath, (err, buffer) => {
+        if (err) return res.json({ date: '00/00/0000' });
+        try {
+            const result = exifParser.create(buffer).parse();
+            const ts = result.tags.DateTimeOriginal || result.tags.DateTime;
+            if (ts) {
+                const d = new Date(ts * 1000);
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                return res.json({ date: `${dd}/${mm}/${yyyy}` });
+            }
+            res.json({ date: '00/00/0000' });
+        } catch (e) {
+            res.json({ date: '00/00/0000' });
+        }
+    });
+});
+
 
 app.post('/api/save/album', express.json(), (req, res) => {
     const dataPath = path.join(__dirname, '../data.json');
