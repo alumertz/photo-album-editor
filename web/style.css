@@ -1055,3 +1055,37 @@ body {
     color: #aaa;
     margin: 4px 0 0;
 }
+
+.join-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.join-preview-thumb {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #444;
+    background: #111;
+}
+
+.join-preview-thumb img {
+    width: 100%;
+    display: block;
+}
+
+.join-preview-thumb span {
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-size: 11px;
+    color: #fff;
+    background: rgba(0,0,0,0.55);
+    padding: 1px 5px;
+    border-radius: 3px;
+}

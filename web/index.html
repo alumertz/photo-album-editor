@@ -83,8 +83,8 @@
                         <button class="btn btn-secondary btn-save-album"><i class="fa fa-save me-2"></i>Save</button>
                         <button class="btn btn-secondary btn-print"><i class="fa fa-print me-2"></i>Print</button>
                     </div>
-                    <div class="item d-flex gap-2 justify-content-center">
-                        <button class="btn btn-outline-secondary btn-print-photo"><i class="fa fa-file-archive me-2"></i>Save JPG ZIP</button>
+                    <div class="item">
+                        <button class="btn w-100 btn-outline-light btn-print-photo"><i class="fa fa-file-archive me-2"></i>Save JPG ZIP</button>
                     </div>
                     <div class="item">
                     </div>
@@ -133,6 +133,11 @@
 
                 <p id="join-status" class="join-status"></p>
 
+                <div id="join-preview-area" style="display:none">
+                    <label class="join-label mt-2">Preview</label>
+                    <div id="join-preview-grid" class="join-preview-grid"></div>
+                </div>
+
                 <div id="join-crop-result" class="join-crop-result" style="display:none">
                     <label class="join-label join-label-warning">⚠ These photos were cropped to fit:</label>
                     <div id="join-crop-list" class="join-crop-list"></div>
@@ -140,8 +145,11 @@
             </div>
             <div class="join-modal-footer">
                 <button class="btn btn-outline-secondary" id="join-cancel-btn">Cancel</button>
-                <button class="btn btn-primary" id="join-process-btn">
-                    <i class="fa fa-download me-1"></i>Process & Download ZIP
+                <button class="btn btn-outline-primary" id="join-process-btn">
+                    <i class="fa fa-eye me-1"></i>Generate Preview
+                </button>
+                <button class="btn btn-primary" id="join-download-btn" disabled>
+                    <i class="fa fa-download me-1"></i>Download ZIP
                 </button>
             </div>
         </div>

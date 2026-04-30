@@ -16,6 +16,11 @@ const SIZES = {
     '20x30': { w: 20, h: 30 },
 };
 
+// Holds generated blobs between preview and download
+let pendingBlobs = [];
+let pendingSizeKey = '';
+let pendingCount = 0;
+
 function cmToPx(cm) {
     return Math.round((cm / CM_PER_INCH) * DPI);
 }
@@ -47,7 +52,6 @@ function getSlots(count, canvasW, canvasH) {
     ];
 }
 
-// Returns true if a crop was needed (aspect ratios didn't match)
 function drawCenteredCrop(ctx, img, slot) {
     const { x, y, w, h } = slot;
     const srcAspect = img.naturalWidth / img.naturalHeight;
@@ -90,74 +94,6 @@ function setStatus(msg) {
     $('#join-status').text(msg);
 }
 
-async function processJoin() {
-    const count   = parseInt($('.join-count-btn.active').data('count'));
-    const sizeKey = $('#join-size-select').val();
-    const size    = SIZES[sizeKey];
-    const canvasW = cmToPx(size.w);
-    const canvasH = cmToPx(size.h);
-    const slots   = getSlots(count, canvasW, canvasH);
-
-    // Collect all album filenames in order
-    const allFilenames = [];
-    $('.page-wrapper').each(function () {
-        const fn = $(this).find('.page-image').attr('data-filename');
-        if (fn) allFilenames.push(fn);
-    });
-
-    if (allFilenames.length === 0) {
-        setStatus('No photos in album.');
-        return;
-    }
-
-    const $btn = $('#join-process-btn');
-    $btn.prop('disabled', true);
-    $('#join-crop-result').hide();
-
-    // Split into batches of `count`
-    const batches = [];
-    for (let i = 0; i < allFilenames.length; i += count) {
-        batches.push(allFilenames.slice(i, i + count));
-    }
-
-    try {
-        const JSZip = await loadJSZip();
-        const zip = new JSZip();
-        const allCropped = [];
-
-        for (let i = 0; i < batches.length; i++) {
-            setStatus(`Processing ${i + 1} of ${batches.length}…`);
-            const { canvas, cropped } = await buildJoinedCanvas(batches[i], slots, canvasW, canvasH);
-            allCropped.push(...cropped);
-            const blob = await canvasToBlob(canvas);
-            zip.file(`joined_${String(i + 1).padStart(3, '0')}.jpg`, blob);
-        }
-
-        setStatus('Generating ZIP…');
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `joined_${count}photos_${sizeKey}_${Date.now()}.zip`;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        setStatus(`Done — ${batches.length} image${batches.length > 1 ? 's' : ''} downloaded.`);
-
-        if (allCropped.length > 0) {
-            $('#join-crop-list').html(allCropped.map(n => `<div class="join-crop-item">${n}</div>`).join(''));
-            $('#join-crop-result').show();
-        }
-
-    } catch (err) {
-        console.error(err);
-        setStatus('Error: ' + err.message);
-    } finally {
-        $btn.prop('disabled', false);
-        updateProcessBtn();
-    }
-}
-
 function getAlbumCount() {
     return $('.page-wrapper .page-image[data-filename]').length;
 }
@@ -176,13 +112,117 @@ function updateProcessBtn() {
 }
 
 function clearResult() {
+    pendingBlobs = [];
     $('#join-crop-result').hide();
     $('#join-crop-list').empty();
+    $('#join-preview-area').hide();
+    $('#join-preview-grid').empty();
+    $('#join-download-btn').prop('disabled', true);
+    updateProcessBtn();
+}
+
+async function generatePreview() {
+    const count   = parseInt($('.join-count-btn.active').data('count'));
+    const sizeKey = $('#join-size-select').val();
+    const size    = SIZES[sizeKey];
+    const canvasW = cmToPx(size.w);
+    const canvasH = cmToPx(size.h);
+    const slots   = getSlots(count, canvasW, canvasH);
+
+    const allFilenames = [];
+    $('.page-wrapper').each(function () {
+        const fn = $(this).find('.page-image').attr('data-filename');
+        if (fn) allFilenames.push(fn);
+    });
+
+    if (allFilenames.length === 0) { setStatus('No photos in album.'); return; }
+
+    const batches = [];
+    for (let i = 0; i < allFilenames.length; i += count) {
+        batches.push(allFilenames.slice(i, i + count));
+    }
+
+    $('#join-process-btn').prop('disabled', true);
+    $('#join-download-btn').prop('disabled', true);
+    $('#join-preview-area').hide();
+    $('#join-preview-grid').empty();
+    $('#join-crop-result').hide();
+
+    const allCropped = [];
+    pendingBlobs = [];
+    pendingSizeKey = sizeKey;
+    pendingCount = count;
+
+    try {
+        for (let i = 0; i < batches.length; i++) {
+            setStatus(`Generating ${i + 1} of ${batches.length}…`);
+            const { canvas, cropped } = await buildJoinedCanvas(batches[i], slots, canvasW, canvasH);
+            allCropped.push(...cropped);
+
+            const blob = await canvasToBlob(canvas);
+            pendingBlobs.push(blob);
+
+            // Add thumbnail
+            const previewUrl = URL.createObjectURL(blob);
+            const $thumb = $('<div>', { class: 'join-preview-thumb' });
+            const $img = $('<img>', { src: previewUrl, alt: `Image ${i + 1}` });
+            const $label = $('<span>', { text: `${i + 1}` });
+            $thumb.append($img, $label);
+            $('#join-preview-grid').append($thumb);
+        }
+
+        $('#join-preview-area').show();
+        $('#join-download-btn').prop('disabled', false);
+        setStatus(`${batches.length} image${batches.length > 1 ? 's' : ''} ready — review and download.`);
+
+        if (allCropped.length > 0) {
+            $('#join-crop-list').html(allCropped.map(n => `<div class="join-crop-item">${n}</div>`).join(''));
+            $('#join-crop-result').show();
+        }
+
+    } catch (err) {
+        console.error(err);
+        setStatus('Error: ' + err.message);
+    } finally {
+        $('#join-process-btn').prop('disabled', false);
+    }
+}
+
+async function downloadZip() {
+    if (pendingBlobs.length === 0) return;
+
+    $('#join-download-btn').prop('disabled', true);
+    setStatus('Generating ZIP…');
+
+    try {
+        const JSZip = await loadJSZip();
+        const zip = new JSZip();
+        pendingBlobs.forEach((blob, i) => {
+            zip.file(`joined_${String(i + 1).padStart(3, '0')}.jpg`, blob);
+        });
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `joined_${pendingCount}photos_${pendingSizeKey}_${Date.now()}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        setStatus(`Done — ${pendingBlobs.length} image${pendingBlobs.length > 1 ? 's' : ''} downloaded.`);
+    } catch (err) {
+        console.error(err);
+        setStatus('Error: ' + err.message);
+    } finally {
+        $('#join-download-btn').prop('disabled', false);
+    }
 }
 
 function openModal() {
     updateProcessBtn();
+    $('#join-preview-area').hide();
     $('#join-crop-result').hide();
+    $('#join-download-btn').prop('disabled', true);
     $('#join-photos-modal').css('display', 'flex');
 }
 
@@ -201,12 +241,11 @@ function initJoinModal() {
         $('.join-count-btn').removeClass('active btn-secondary').addClass('btn-outline-secondary');
         $(this).removeClass('btn-outline-secondary').addClass('active btn-secondary');
         clearResult();
-        updateProcessBtn();
     });
 
     $('#join-size-select').on('change', clearResult);
-
-    $('#join-process-btn').on('click', processJoin);
+    $('#join-process-btn').on('click', generatePreview);
+    $('#join-download-btn').on('click', downloadZip);
 }
 
 export { initJoinModal };
