@@ -246,5 +246,6 @@ export {
     initializeSortable,
     handlePrint,
     handlePhotoPrint,
-    clearImageCache
+    clearImageCache,
+    loadJSZip
 };

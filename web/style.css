@@ -877,3 +877,181 @@ body {
     border: 1pt solid red;
     box-sizing: border-box;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Join Photos Modal                                                   */
+/* ------------------------------------------------------------------ */
+
+.join-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.join-modal {
+    background: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 8px;
+    width: 720px;
+    max-width: 95vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.join-modal-header {
+    background: #111;
+    color: #e0e0e0;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.join-modal-close {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.join-modal-close:hover { color: #fff; }
+
+.join-modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.join-modal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #444;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+    background: #1e1e1e;
+}
+
+.join-row {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.join-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 160px;
+}
+
+.join-label {
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.join-label-warning { color: #f0a020; }
+
+.join-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.join-photo-item {
+    position: relative;
+    cursor: pointer;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    background: #2a2a2a;
+    transition: border-color 0.15s;
+}
+
+.join-photo-item:hover { border-color: #888; }
+
+.join-photo-item.selected { border-color: #4a9eff; }
+
+.join-photo-item img {
+    width: 100%;
+    aspect-ratio: 3/2;
+    object-fit: cover;
+    display: block;
+}
+
+.join-photo-num {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 20px;
+    height: 20px;
+    background: #4a9eff;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.join-photo-name {
+    display: block;
+    font-size: 9px;
+    color: #aaa;
+    padding: 3px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.join-crop-result {
+    background: #2a2200;
+    border: 1px solid #6b4800;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-top: 8px;
+}
+
+.join-crop-list {
+    max-height: 120px;
+    overflow-y: auto;
+    margin-top: 6px;
+}
+
+.join-crop-item {
+    font-size: 12px;
+    color: #ddb060;
+    padding: 2px 0;
+}
+
+.join-status {
+    font-size: 12px;
+    color: #aaa;
+    margin: 4px 0 0;
+}

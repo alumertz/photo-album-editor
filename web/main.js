@@ -10,6 +10,7 @@ import { loadGallery } from './modules/gallery.js';
 import { initializeEditor, mirrorWithEditor } from './modules/editor.js';
 import { toggleCutMarks, initializeSortable, handlePrint, handlePhotoPrint } from './modules/ui.js';
 import { setupPrintEventListeners } from './modules/print.js';
+import { initJoinModal } from './modules/photoJoiner.js';
 
 // Global variables needed for compatibility
 let quill;
@@ -57,6 +58,7 @@ function setupEventListeners() {
     setupAddTextBoxButtons();
     setupAddDateBoxButtons();
     setupDateBoxSidebarControls();
+    initJoinModal();
 }
 
 /**
