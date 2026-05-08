@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { spawnSync } = require('child_process');
 const exifParser = require('exif-parser');
 
 const app = express();
@@ -17,15 +18,34 @@ app.use('/photos', express.static(path.join(__dirname, '../photos')));
 
 app.get('/api/gallery', (req, res) => {
     const photosDir = path.join(__dirname, '../photos');
-    fs.readdir(photosDir, (err, files) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
+    try {
+        const images = [];
+        const entries = fs.readdirSync(photosDir, { withFileTypes: true });
+
+        for (const entry of entries) {
+            if (/\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(entry.name)) {
+                images.push(entry.name);
+            } else {
+                // Follow symlinks and recurse one level into subdirectories
+                try {
+                    const stat = fs.statSync(path.join(photosDir, entry.name));
+                    if (stat.isDirectory()) {
+                        const subFiles = fs.readdirSync(path.join(photosDir, entry.name));
+                        for (const sub of subFiles) {
+                            if (/\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(sub)) {
+                                images.push(`${entry.name}/${sub}`);
+                            }
+                        }
+                    }
+                } catch (e) { /* skip unreadable entries */ }
+            }
         }
-        const images = files.filter(file =>
-            /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file)
-        );
+
+        images.sort();
         res.json(images);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.get('/api/album', (req, res) => {
@@ -42,8 +62,11 @@ app.get('/api/album', (req, res) => {
 });
 
 app.get('/api/photo-exif-date/:filename', (req, res) => {
-    const safeName = path.basename(req.params.filename);
-    const photoPath = path.join(__dirname, '../photos', safeName);
+    // Decode and sanitize — allows one level of subdirectory (e.g. "bereal/photo.jpg")
+    const rawName = req.params.filename;
+    const parts = rawName.split('/').filter(p => p && p !== '..' && p !== '.');
+    const safePath = parts.map(p => path.basename(p)).join('/');
+    const photoPath = path.join(__dirname, '../photos', safePath);
 
     fs.readFile(photoPath, (err, buffer) => {
         if (err) return res.json({ date: '00/00/0000' });
@@ -64,6 +87,47 @@ app.get('/api/photo-exif-date/:filename', (req, res) => {
     });
 });
 
+app.post('/api/load-bereal', (req, res) => {
+    // Open native macOS folder picker
+    const pickerResult = spawnSync('osascript', [
+        '-e', 'POSIX path of (choose folder with prompt "Select your BeReal export folder")'
+    ]);
+
+    if (pickerResult.status !== 0) {
+        // User cancelled the dialog
+        return res.json({ success: false, cancelled: true });
+    }
+
+    const folderPath = pickerResult.stdout.toString().trim();
+    if (!folderPath) {
+        return res.json({ success: false, cancelled: true });
+    }
+
+    // Run the Python processing script
+    const scriptPath = path.join(__dirname, '../../bereal/process.py');
+    const pyResult = spawnSync('python3', [scriptPath, folderPath], { encoding: 'utf8' });
+
+    if (pyResult.status !== 0) {
+        return res.status(500).json({ success: false, error: pyResult.stderr || 'Python script failed' });
+    }
+
+    // Create symlink api/photos/bereal -> <folder>/processed
+    const symlinkPath = path.join(__dirname, '../photos/bereal');
+    const processedDir = path.join(folderPath, 'processed');
+
+    try {
+        fs.lstatSync(symlinkPath);
+        fs.unlinkSync(symlinkPath);
+    } catch (e) { /* symlink doesn't exist yet */ }
+
+    try {
+        fs.symlinkSync(processedDir, symlinkPath);
+    } catch (e) {
+        return res.status(500).json({ success: false, error: `Failed to create symlink: ${e.message}` });
+    }
+
+    res.json({ success: true, folder: folderPath });
+});
 
 app.post('/api/save/album', express.json(), (req, res) => {
     const dataPath = path.join(__dirname, '../data.json');

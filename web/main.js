@@ -49,6 +49,7 @@ function loadInitialData() {
  */
 function setupEventListeners() {
     $('.btn-refresh-gallery').on('click', loadGallery);
+    $('.btn-load-bereal').on('click', handleLoadBereal);
     $('.btn-print').on('click', handlePrint);
     $('.btn-print-photo').on('click', handlePhotoPrint);
     $('.btn-save-album').on('click', saveAlbum);
@@ -59,6 +60,38 @@ function setupEventListeners() {
     setupAddDateBoxButtons();
     setupDateBoxSidebarControls();
     initJoinModal();
+}
+
+/**
+ * Handles the Load BeReals flow: opens a folder picker server-side,
+ * processes photos into a timestamped output folder, and refreshes the gallery.
+ */
+async function handleLoadBereal() {
+    const $btn = $('.btn-load-bereal');
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Processing...');
+
+    try {
+        const result = await $.ajax({ url: '/api/load-bereal', method: 'POST' });
+
+        if (result.cancelled) {
+            $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
+            return;
+        }
+
+        if (result.success) {
+            $btn.html('<i class="fa fa-check me-2"></i>Done!');
+            loadGallery();
+            setTimeout(() => {
+                $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
+            }, 2000);
+        } else {
+            alert('Error loading BeReals: ' + (result.error || 'Unknown error'));
+            $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
+        }
+    } catch (e) {
+        alert('Failed to load BeReals. Check the server console for details.');
+        $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
+    }
 }
 
 /**
