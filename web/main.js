@@ -8,7 +8,7 @@ import './style.css';
 import { loadAlbumData, saveAlbum } from './modules/album.js';
 import { loadGallery } from './modules/gallery.js';
 import { initializeEditor, mirrorWithEditor } from './modules/editor.js';
-import { toggleCutMarks, initializeSortable, handlePrint, handlePhotoPrint } from './modules/ui.js';
+import { toggleCutMarks, initializeSortable, handlePrint } from './modules/ui.js';
 import { setupPrintEventListeners } from './modules/print.js';
 import { initJoinModal } from './modules/photoJoiner.js';
 
@@ -51,7 +51,6 @@ function setupEventListeners() {
     $('.btn-refresh-gallery').on('click', loadGallery);
     $('.btn-load-bereal').on('click', handleLoadBereal);
     $('.btn-print').on('click', handlePrint);
-    $('.btn-print-photo').on('click', handlePhotoPrint);
     $('.btn-save-album').on('click', saveAlbum);
     $('.btn-toggle-marks').on('click', toggleCutMarks);
     setupPrintEventListeners();
@@ -60,37 +59,149 @@ function setupEventListeners() {
     setupAddDateBoxButtons();
     setupDateBoxSidebarControls();
     initJoinModal();
+    setupUpload();
 }
 
 /**
  * Handles the Load BeReals flow: opens a folder picker server-side,
- * processes photos into a timestamped output folder, and refreshes the gallery.
+ * streams progress via SSE into a modal, and refreshes the gallery when done.
+ * Closing the modal lets the import keep running; Cancel kills it.
  */
 async function handleLoadBereal() {
     const $btn = $('.btn-load-bereal');
-    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Processing...');
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-2"></i>Opening...');
+
+    let jobId = null;
+    let eventSource = null;
+
+    function setButtonProgress(pct) {
+        $btn.html(`<i class="fa fa-camera me-2"></i>${pct}%`);
+    }
+
+    function resetButton() {
+        $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
+    }
+
+    function openModal() {
+        $('#bereal-progress-bar').css('width', '0%').text('0%')
+            .removeClass('bg-success bg-danger').addClass('progress-bar-animated progress-bar-striped');
+        $('#bereal-modal-status').text('Processing...');
+        $('#bereal-modal-file').text('');
+        $('#bereal-skipped-area').hide();
+        $('#bereal-skipped-list').empty();
+        $('#bereal-modal').show();
+    }
+
+    function closeModal() {
+        $('#bereal-modal').hide();
+        eventSource = null;
+    }
+
+    function updateProgress(current, total, filename) {
+        const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+        $('#bereal-progress-bar').css('width', pct + '%').text(pct + '%');
+        $('#bereal-modal-status').text(`${current} of ${total} photos`);
+        if (filename) $('#bereal-modal-file').text(filename);
+        setButtonProgress(pct);
+    }
+
+    function subscribeToJob(id) {
+        eventSource = new EventSource(`/api/load-bereal/progress/${id}`);
+
+        function onDone(event) {
+            if (eventSource) eventSource.close();
+            $('#bereal-progress-bar').css('width', '100%').text('100%')
+                .removeClass('progress-bar-animated progress-bar-striped').addClass('bg-success');
+            $('#bereal-modal-file').text('');
+            $('#bereal-cancel-btn').prop('disabled', true);
+            $btn.html('<i class="fa fa-check me-2"></i>Done!');
+
+            const skipped = event && event.skipped;
+            if (skipped && skipped.length > 0) {
+                $('#bereal-modal-status').text(`Finished! ${skipped.length} file(s) could not be renamed.`);
+                $('#bereal-skipped-list').html(skipped.map(f => `<div>${f}</div>`).join(''));
+                $('#bereal-skipped-area').show();
+            } else {
+                $('#bereal-modal-status').text('Finished!');
+                $('#bereal-skipped-area').hide();
+            }
+
+            loadGallery();
+            setTimeout(() => { resetButton(); closeModal(); }, 4000);
+        }
+
+        function onError(msg) {
+            if (eventSource) eventSource.close();
+            $('#bereal-progress-bar').addClass('bg-danger').removeClass('progress-bar-animated progress-bar-striped');
+            $('#bereal-modal-status').text('Error: ' + (msg || 'Something went wrong'));
+            resetButton();
+        }
+
+        eventSource.onmessage = (e) => {
+            const event = JSON.parse(e.data);
+
+            if (event.type === 'state') {
+                // Job may have finished before EventSource connected
+                if (event.status === 'done') {
+                    onDone(event);
+                } else if (event.status === 'error') {
+                    onError(event.message);
+                } else if (event.status === 'cancelled') {
+                    eventSource.close();
+                    closeModal();
+                    resetButton();
+                } else if (event.total > 0) {
+                    updateProgress(event.progress, event.total, '');
+                }
+            } else if (event.type === 'total') {
+                $('#bereal-modal-status').text(`0 of ${event.count} photos`);
+            } else if (event.type === 'progress') {
+                updateProgress(event.current, event.total || 0, event.filename);
+            } else if (event.type === 'done') {
+                onDone(event);
+            } else if (event.type === 'error') {
+                onError(event.message);
+            } else if (event.type === 'cancelled') {
+                eventSource.close();
+                closeModal();
+                resetButton();
+            }
+        };
+
+        eventSource.onerror = () => {
+            eventSource.close();
+            resetButton();
+        };
+    }
+
+    // Close button hides the modal but lets the job keep running
+    $('#bereal-modal-close').off('click').on('click', closeModal);
+
+    // Cancel button kills the job
+    $('#bereal-cancel-btn').off('click').prop('disabled', false).on('click', async () => {
+        if (jobId) {
+            await $.ajax({ url: `/api/load-bereal/cancel/${jobId}`, method: 'POST' });
+            if (eventSource) eventSource.close();
+        }
+        closeModal();
+        resetButton();
+    });
 
     try {
         const result = await $.ajax({ url: '/api/load-bereal', method: 'POST' });
 
-        if (result.cancelled) {
-            $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
+        if (result.cancelled || !result.success) {
+            resetButton();
             return;
         }
 
-        if (result.success) {
-            $btn.html('<i class="fa fa-check me-2"></i>Done!');
-            loadGallery();
-            setTimeout(() => {
-                $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
-            }, 2000);
-        } else {
-            alert('Error loading BeReals: ' + (result.error || 'Unknown error'));
-            $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
-        }
+        jobId = result.jobId;
+        setButtonProgress(0);
+        openModal();
+        subscribeToJob(jobId);
     } catch (e) {
-        alert('Failed to load BeReals. Check the server console for details.');
-        $btn.prop('disabled', false).html('<i class="fa fa-camera me-2"></i>Load BeReals');
+        alert('Failed to start BeReal import. Check the server console for details.');
+        resetButton();
     }
 }
 
@@ -286,7 +397,7 @@ function updateDateBoxSidebarControls($dateBox) {
     $(`.datebox-divider[data-divider="${CSS.escape(currentDivider)}"]`).addClass('active');
 
     const $text = $dateBox.find('.text');
-    const presetClasses = ['preset-overlay', 'preset-classic', 'preset-stamp', 'preset-film'];
+    const presetClasses = ['preset-overlay', 'preset-classic', 'preset-stamp', 'preset-film', 'preset-analogica', 'preset-minimalista', 'preset-typewriter'];
     const activePreset = presetClasses.find(p => $text.hasClass(p));
     $('.datebox-preset').removeClass('active btn-secondary').addClass('btn-outline-light');
     if (activePreset) {
@@ -303,7 +414,7 @@ function setupDateBoxSidebarControls() {
         if (!window.currentDateBox) return;
         const preset = $(this).data('preset');
         const $text = window.currentDateBox.find('.text');
-        $text.removeClass('preset-overlay preset-classic preset-stamp preset-film');
+        $text.removeClass('preset-overlay preset-classic preset-stamp preset-film preset-analogica preset-minimalista preset-typewriter');
         $text.addClass('preset-' + preset);
         updateDateBoxSidebarControls(window.currentDateBox);
     });
@@ -427,4 +538,51 @@ function applyTextBoxBackground($textBox) {
     const b = parseInt(color.substr(5, 2), 16);
     
     $textBox.css('background', `rgba(${r}, ${g}, ${b}, ${opacity})`);
+}
+
+function setupUpload() {
+    const $dropzone = $('#gallery-dropzone');
+    const $fileInput = $('#gallery-file-input');
+
+    async function uploadFiles(files) {
+        if (!files || files.length === 0) return;
+        $dropzone.addClass('uploading').find('span').text('Uploading...');
+
+        const formData = new FormData();
+        for (const file of files) {
+            formData.append('photos', file);
+        }
+
+        try {
+            await $.ajax({ url: '/api/upload', method: 'POST', data: formData, processData: false, contentType: false });
+            loadGallery();
+        } catch (e) {
+            alert('Upload failed. Check the server console.');
+        } finally {
+            $dropzone.removeClass('uploading dragover').find('span').text('Drop photos or click to select');
+        }
+    }
+
+    // Click on drop zone or sidebar button opens file picker
+    $dropzone.on('click', () => $fileInput.trigger('click'));
+    $('.btn-upload-photos').on('click', () => $fileInput.trigger('click'));
+
+    $fileInput.on('change', function () {
+        uploadFiles(this.files);
+        this.value = '';
+    });
+
+    // Drag and drop
+    $dropzone.on('dragover dragenter', (e) => {
+        e.preventDefault();
+        $dropzone.addClass('dragover');
+    });
+
+    $dropzone.on('dragleave dragend', () => $dropzone.removeClass('dragover'));
+
+    $dropzone.on('drop', (e) => {
+        e.preventDefault();
+        $dropzone.removeClass('dragover');
+        uploadFiles(e.originalEvent.dataTransfer.files);
+    });
 }

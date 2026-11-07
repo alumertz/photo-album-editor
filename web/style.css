@@ -165,6 +165,53 @@ body {
     background: rgba(0, 0, 0, 0.55);
 }
 
+.datebox .text.preset-analogica {
+    /* Digital clock aesthetic */
+    font-family: 'Digital-7', 'Courier New', monospace;
+    color: #ff8c00;
+    font-size: 24px;
+    font-weight: bold;
+
+    /* Light leak glow simulation */
+    text-shadow:
+        0 0 2px rgba(255, 140, 0, 0.8),
+        0 0 8px rgba(255, 69, 0, 0.5);
+
+    letter-spacing: 2px;
+    opacity: 0.85;
+    text-transform: uppercase;
+}
+
+.datebox .text.preset-minimalista {
+    /* Clean minimalist style */
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 300;
+
+    /* Wide character spacing */
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+
+    /* Soft shadow to stand out from background */
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.datebox .text.preset-typewriter {
+    /* Typewriter effect */
+    font-family: 'Courier', 'Courier New', monospace;
+    color: #f5f5f5;
+    font-size: 16px;
+    padding: 5px 10px;
+
+    /* Slightly blurred ink effect */
+    filter: blur(0.3px);
+    opacity: 0.7;
+
+    /* Semi-transparent label background */
+    background: rgba(0, 0, 0, 0.1);
+}
+
 .datebox-controls {
     padding: 0;
     background-color: #2a2a2a;
@@ -393,6 +440,39 @@ body {
 .gallery-image:hover {
     filter: brightness(2);
     transform: scale(0.9);
+}
+
+.gallery-dropzone {
+    border: 2px dashed #555;
+    border-radius: 6px;
+    margin: 8px;
+    padding: 14px 8px;
+    text-align: center;
+    color: #888;
+    cursor: pointer;
+    font-size: 0.78rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.gallery-dropzone i {
+    font-size: 1.2rem;
+}
+
+.gallery-dropzone:hover,
+.gallery-dropzone.dragover {
+    border-color: #aaa;
+    background: rgba(255, 255, 255, 0.05);
+    color: #ccc;
+}
+
+.gallery-dropzone.uploading {
+    border-color: #666;
+    color: #aaa;
+    pointer-events: none;
 }
 
 .gallery-item {

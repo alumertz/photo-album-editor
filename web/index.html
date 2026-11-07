@@ -16,7 +16,11 @@
     <div class="container-fluid screenonly">
         <div class="row">
             <div class="gallery col-2">
-                
+                <div id="gallery-dropzone" class="gallery-dropzone">
+                    <i class="fa fa-upload"></i>
+                    <span>Drop photos or click to select</span>
+                    <input type="file" id="gallery-file-input" multiple accept="image/*" style="display:none">
+                </div>
             </div>
             <div class="album col-7" data-cut-preview="false">
                 
@@ -38,6 +42,9 @@
                                 <button class="btn btn-sm btn-outline-light datebox-preset" data-preset="classic">Classic</button>
                                 <button class="btn btn-sm btn-outline-light datebox-preset" data-preset="stamp">Stamp</button>
                                 <button class="btn btn-sm btn-outline-light datebox-preset" data-preset="film">Film</button>
+                                <button class="btn btn-sm btn-outline-light datebox-preset" data-preset="analogica">Analog</button>
+                                <button class="btn btn-sm btn-outline-light datebox-preset" data-preset="minimalista">Minimal</button>
+                                <button class="btn btn-sm btn-outline-light datebox-preset" data-preset="typewriter">Typewriter</button>
                             </div>
                             <label>Divider</label>
                             <div class="d-flex gap-1">
@@ -79,6 +86,9 @@
                 </div>
 
                 <div class="sidebar-bottom">
+                    <div class="item">
+                        <button class="btn w-100 btn-outline-light btn-upload-photos"><i class="fa fa-upload me-2"></i>Upload Photos</button>
+                    </div>
                     <div class="item d-flex gap-2 justify-content-center">
                         <button class="btn btn-secondary btn-save-album"><i class="fa fa-save me-2"></i>Save</button>
                         <button class="btn btn-secondary btn-print"><i class="fa fa-print me-2"></i>Print</button>
@@ -96,6 +106,31 @@
                         <button class="btn w-100 btn-outline-light btn-toggle-marks">Show Cut Marks</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load BeReals Modal -->
+    <div id="bereal-modal" class="join-modal-overlay" style="display:none">
+        <div class="join-modal">
+            <div class="join-modal-header">
+                <span>Loading BeReals</span>
+                <button class="join-modal-close" id="bereal-modal-close">×</button>
+            </div>
+            <div class="join-modal-body">
+                <p id="bereal-modal-status" class="join-status">Starting...</p>
+                <div class="progress mb-2" style="height: 18px;">
+                    <div id="bereal-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+                         role="progressbar" style="width: 0%">0%</div>
+                </div>
+                <p id="bereal-modal-file" class="text-muted" style="font-size: 0.75rem; min-height: 1.2em;"></p>
+                <div id="bereal-skipped-area" style="display:none; margin-top: 8px;">
+                    <p class="text-warning mb-1" style="font-size: 0.8rem;">Could not rename:</p>
+                    <div id="bereal-skipped-list" style="font-size: 0.75rem; max-height: 120px; overflow-y: auto; color: #aaa;"></div>
+                </div>
+            </div>
+            <div class="join-modal-footer">
+                <button class="btn btn-outline-secondary" id="bereal-cancel-btn">Cancel</button>
             </div>
         </div>
     </div>

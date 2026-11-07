@@ -1,10 +1,14 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const exifParser = require('exif-parser');
+const multer = require('multer');
 
 const app = express();
+
+// In-memory store for active import jobs
+const jobs = new Map();
 
 // Enable CORS
 app.use((req, res, next) => {
@@ -15,6 +19,28 @@ app.use((req, res, next) => {
 });
 
 app.use('/photos', express.static(path.join(__dirname, '../photos')));
+
+const upload = multer({ dest: path.join(__dirname, '../photos') });
+
+app.post('/api/upload', upload.array('photos'), (req, res) => {
+    const photosDir = path.join(__dirname, '../photos');
+    const saved = [];
+    for (const file of req.files) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        let base = path.basename(file.originalname, ext);
+        let name = file.originalname;
+        let dest = path.join(photosDir, name);
+        let counter = 1;
+        while (fs.existsSync(dest)) {
+            name = `${base}-${counter}${ext}`;
+            dest = path.join(photosDir, name);
+            counter++;
+        }
+        fs.renameSync(file.path, dest);
+        saved.push(name);
+    }
+    res.json({ success: true, files: saved });
+});
 
 app.get('/api/gallery', (req, res) => {
     const photosDir = path.join(__dirname, '../photos');
@@ -87,14 +113,14 @@ app.get('/api/photo-exif-date/:filename', (req, res) => {
     });
 });
 
+// Opens the native folder picker and starts the Python import job.
+// Returns { jobId } immediately so the frontend can subscribe to SSE.
 app.post('/api/load-bereal', (req, res) => {
-    // Open native macOS folder picker
     const pickerResult = spawnSync('osascript', [
         '-e', 'POSIX path of (choose folder with prompt "Select your BeReal export folder")'
     ]);
 
     if (pickerResult.status !== 0) {
-        // User cancelled the dialog
         return res.json({ success: false, cancelled: true });
     }
 
@@ -103,31 +129,126 @@ app.post('/api/load-bereal', (req, res) => {
         return res.json({ success: false, cancelled: true });
     }
 
-    // Run the Python processing script
+    const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const scriptPath = path.join(__dirname, '../../bereal/process.py');
-    const pyResult = spawnSync('python3', [scriptPath, folderPath], { encoding: 'utf8' });
+    const pyProcess = spawn('python3', [scriptPath, folderPath]);
 
-    if (pyResult.status !== 0) {
-        return res.status(500).json({ success: false, error: pyResult.stderr || 'Python script failed' });
-    }
+    const job = {
+        process: pyProcess,
+        status: 'running',
+        progress: 0,
+        total: 0,
+        skipped: [],
+        folder: folderPath,
+        clients: []
+    };
+    jobs.set(jobId, job);
 
-    // Create symlink api/photos/bereal -> <folder>/processed
-    const symlinkPath = path.join(__dirname, '../photos/bereal');
-    const processedDir = path.join(folderPath, 'processed');
+    let buffer = '';
+    pyProcess.stdout.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+            handlePythonLine(job, line.trim());
+        }
+    });
 
-    try {
-        fs.lstatSync(symlinkPath);
-        fs.unlinkSync(symlinkPath);
-    } catch (e) { /* symlink doesn't exist yet */ }
+    pyProcess.stdout.on('end', () => {
+        if (buffer.trim()) handlePythonLine(job, buffer.trim());
+    });
 
-    try {
-        fs.symlinkSync(processedDir, symlinkPath);
-    } catch (e) {
-        return res.status(500).json({ success: false, error: `Failed to create symlink: ${e.message}` });
-    }
+    pyProcess.on('close', (code) => {
+        if (job.status === 'running') {
+            job.status = 'error';
+            broadcast(job, { type: 'error', message: `Process exited with code ${code}` });
+        }
+        scheduleJobCleanup(jobId);
+    });
 
-    res.json({ success: true, folder: folderPath });
+    res.json({ success: true, jobId });
 });
+
+// SSE endpoint — streams progress events to the frontend.
+app.get('/api/load-bereal/progress/:jobId', (req, res) => {
+    const job = jobs.get(req.params.jobId);
+    if (!job) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'Job not found' })}\n\n`);
+        return res.end();
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Send current state immediately so late subscribers catch up
+    res.write(`data: ${JSON.stringify({ type: 'state', status: job.status, progress: job.progress, total: job.total, skipped: job.skipped })}\n\n`);
+
+    job.clients.push(res);
+    req.on('close', () => {
+        job.clients = job.clients.filter(c => c !== res);
+    });
+});
+
+// Kills the running Python process for a job.
+app.post('/api/load-bereal/cancel/:jobId', (req, res) => {
+    const job = jobs.get(req.params.jobId);
+    if (!job) return res.json({ success: false, error: 'Job not found' });
+
+    job.process.kill();
+    job.status = 'cancelled';
+    broadcast(job, { type: 'cancelled' });
+    scheduleJobCleanup(req.params.jobId);
+    res.json({ success: true });
+});
+
+function handlePythonLine(job, line) {
+    if (!line) return;
+    try {
+        const event = JSON.parse(line);
+        if (event.type === 'total') {
+            job.total = event.count;
+            broadcast(job, event);
+        } else if (event.type === 'progress') {
+            job.progress = event.current;
+            broadcast(job, event);
+        } else if (event.type === 'done') {
+            job.status = 'done';
+            job.skipped = event.skipped || [];
+            createSymlinks(job.folder);
+            broadcast(job, event);
+        } else if (event.type === 'error') {
+            job.status = 'error';
+            broadcast(job, event);
+        }
+    } catch (e) {
+        // Non-JSON line (e.g. pip warnings) — ignore
+    }
+}
+
+function broadcast(job, event) {
+    const data = `data: ${JSON.stringify(event)}\n\n`;
+    job.clients.forEach(client => client.write(data));
+}
+
+function createSymlinks(folderPath) {
+    for (const subdir of ['bereal', 'post']) {
+        const target = path.join(folderPath, 'Photos', subdir);
+        if (!fs.existsSync(target)) continue;
+
+        const symlinkPath = path.join(__dirname, '../photos', subdir);
+        try { fs.lstatSync(symlinkPath); fs.unlinkSync(symlinkPath); } catch (e) { /* doesn't exist */ }
+        try { fs.symlinkSync(target, symlinkPath); } catch (e) {
+            console.error(`Failed to create symlink for ${subdir}:`, e.message);
+        }
+    }
+}
+
+function scheduleJobCleanup(jobId) {
+    // Keep job alive briefly so late SSE clients can still connect and receive final state
+    setTimeout(() => jobs.delete(jobId), 30000);
+}
 
 app.post('/api/save/album', express.json(), (req, res) => {
     const dataPath = path.join(__dirname, '../data.json');
@@ -137,7 +258,6 @@ app.post('/api/save/album', express.json(), (req, res) => {
         return res.status(400).json({ error: 'Invalid photos data' });
     }
 
-    // Read existing album data or create a new object
     fs.readFile(dataPath, 'utf8', (err, data) => {
         let albumData = {};
         if (!err) {
